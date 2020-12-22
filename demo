@@ -1,0 +1,116 @@
+% This demo was made by Yuanchao. 
+% Jun.2019
+clc
+clear all
+close all
+currentFolder = pwd;
+addpath(genpath(currentFolder))
+% Test = 1 is estimated for the experiment with real data
+% Test = 2 is used for the the experiment which uses the sythetic data with nonlinear mixing model. 
+test = 1; 
+switch test
+case 1
+%% load Moffett Data
+    load Y_Moffett.mat
+    load Y3d.mat
+    [bands,n] = size(Y);   
+%   style = 1; % VCA is used for initialization
+    style = 2; % N-FINDR is used for initialization
+    maxiteration = 100;
+    m = 3;
+% main function
+    [E,A,D,B,R] = DMBU(Y,'NUM_ENDMS',m,'MAX_ITERATIONS',maxiteration,'INITIALIZATION',style,'PLOT_ERROR','no','SHOW_ERROR', 'yes');
+    figure('NumberTitle', 'off', 'Name', 'Endmembers');
+    plot(E,'black','LineWidth',1);
+    ylabel('Reflectance','fontsize',20);
+    xlabel('Bands','fontsize',20);
+    set(gca,'FontSize',15);
+    title('Endmembers','fontsize',12);
+    hold off
+    Abundance = A';
+    for i = 1:size(Abundance,2)
+        map = reshape(Abundance(:,i),[size(Y3d,1),size(Y3d,2)]);
+        figure
+        imagesc(map',[0 1]);
+%       imagesc(map');
+        colormap(gray)
+        colorbar 
+%       set(gcf, 'position', [100 100 500 600]);
+        axis off
+        title('Abundance','fontsize',12);
+    end
+    Babundance = B';
+    for i = 1:size(Babundance,2)
+        map = reshape(Babundance(:,i),[size(Y3d,1),size(Y3d,2)]);
+        figure
+        imagesc(map');
+        colormap(gray)
+%       colorbar 
+%       set(gcf, 'position', [100 100 500 600]);
+        title('Interaction Abundance','fontsize',12);
+        axis off
+    end
+  R3d = reshape(R', 50, 50, bands); 
+  R3d = imrotate(R3d, -90); 
+  R3d = fliplr(R3d);
+  figure
+  imagesc(R3d(:,:,1));
+%   colormap(gray);
+%   colorbar 
+  axis off
+  title('Interaction outlier','fontsize',12);
+%   for i = 1:m
+%   figure
+%   Sh1 = plot(E(:,i),'black','LineWidth',1.5);%real
+%   hold on
+%   ylabel('reflectance','fontsize',20);
+%   xlabel('bands','fontsize',20);
+%   set(gca,'FontSize',17);
+%   set(gcf, 'position', [200 200 500 300]);
+% %   title('Proposed');
+%   hold off
+%   end
+% [vif_T,vif_V,vif_T_V] = vif_criterion(E,D);
+% disp('   Nonlinearity Estimation');
+% disp([' VIF of ture endmembers is ' num2str(vif_T)]);
+% disp([' VIF of virtual endmembers is ' num2str(vif_V)]);
+% disp([' VIF of the influence from virtual endmembers to true endmembers is ' num2str(vif_T_V)]);
+case 2
+% Sythetic data for experiment.
+MaxPurity = 1;% Remove all pure pixels
+SNR = 40; %dB
+[Y,M,X] = generate_nonlinear_data('MAXPURITY',MaxPurity,'SNR',SNR,'SHOW_LINEAR','no','SHOW_NONLINEAR','yes');
+m = 3;
+style = 1;
+maxiteration = 100;
+% tic
+[E,A,D,B] = DMBU(Y,'NUM_ENDMS',m,'MAX_ITERATIONS',maxiteration,'INITIALIZATION',style,'PLOT_ERROR','no','SHOW_ERROR', 'yes');
+% toc
+
+figure('NumberTitle', 'off', 'Name', 'Endmembers');
+plot(E,'r','LineWidth',3);
+hold on
+plot(M,'-.','color',[0,0.45,0.74],'LineWidth',3);
+ylabel('Reflectance','fontsize',15);
+xlabel('Bands','fontsize',15);
+set(gca,'FontSize',15);
+set(gcf, 'position', [300 300 650 250]);
+% title('Results');
+sh1 = plot(E(:,1),'r','LineWidth',3);
+sh2 = plot(M(:,1),'-.','color',[0,0.45,0.74],'LineWidth',3);
+legend([sh1,sh2],{'Estimated','Library'},'Location','NorthEastOutside');
+hold off
+
+figure('NumberTitle', 'off', 'Name', 'Reconstruction');
+RecY = E*A+D*B; % Reconstructed data
+subplot(211);
+imagesc(Y);
+title('Original Y');
+ylabel('Bands','fontsize',10);
+xlabel('Pixels','fontsize',10);
+subplot(212);
+imagesc(RecY);
+title('Reconstructed Y');
+ylabel('Bands','fontsize',10);
+xlabel('Pixels','fontsize',10);
+end
