@@ -1,0 +1,113 @@
+% This demo was made by Yuanchao. 
+% Jun.2019
+clc
+clear all
+close all
+currentFolder = pwd;
+addpath(genpath(currentFolder))
+load Y_Moffett.mat
+load Y3d.mat
+[bands,n]=size(Y);
+m=3;
+[numBands,Newpixels]=size(Y);
+img = reshape(Y.', 1, Newpixels, numBands); 
+[E1,~] = NFINDR(img,m);
+[A1] = hyperFcls(Y, E1);
+disp('please waiting....');
+%% rNMF (nonlinear unmixing, unsupervised unmixing)
+lambda = 0.1; % penalisation weight hyperparameter
+beta = 1; % beta divergence shape parameter
+tol = 1e-5; % convergence tolerance parameter
+n_iter_max = 300; % maximum number of iterations
+R0 = abs(randn(bands,n))+1;
+[E2, A2, R2, obj] = group_robust_nmf(Y, beta, E1, A1, R0, lambda, tol, n_iter_max);
+Abundance2=A2';
+for i=1:size(Abundance2,2)
+    map=reshape(Abundance2(:,i),[size(Y3d,1),size(Y3d,2)]);
+    figure
+    imagesc(map',[0 1]);
+    colormap(gray);
+%     colorbar 
+    title('rNMF Abundance','fontsize',12);
+    axis off
+end
+  R3d = reshape(R2', 50, 50, bands); 
+  R3d = imrotate(R3d, -90); 
+  R3d = fliplr(R3d);
+  figure
+  imagesc(R3d(:,:,20));
+%   colormap(gray)
+  title('rNMF Interaction Outlier','fontsize',12);
+  axis off
+
+%% Semi-NMF (nonlinear unmixing, supervised unmixing)
+ite_max = 1000;
+[A3,B3,M3,~,~] = SNMF_GBM(Y,E1,ite_max,A1);
+Abundance3=A3';
+for i=1:size(Abundance3,2)
+    map=reshape(Abundance3(:,i),[size(Y3d,1),size(Y3d,2)]);
+    figure
+    imagesc(map',[0 1]);
+    colormap(gray);
+%     colorbar 
+    title('Semi-NMF Abundance','fontsize',12);
+    axis off
+end
+    Babundance = B3';
+    for i = 1:size(Babundance,2)
+        map = reshape(Babundance(:,i),[size(Y3d,1),size(Y3d,2)]);
+        figure
+        imagesc(map');
+        colormap(gray)
+%       colorbar 
+%       set(gcf, 'position', [100 100 500 600]);
+        title('Semi-NMF Interaction Abundance','fontsize',12);
+        axis off
+    end
+  R3 = M3*B3;
+  R3d = reshape(R3', 50, 50, bands); 
+  R3d = imrotate(R3d, -90); 
+  R3d = fliplr(R3d);
+  figure
+  imagesc(R3d(:,:,120));
+  title('Semi-NMF Interaction Outlier','fontsize',12);
+  axis off
+%% DMBU
+    style = 2; 
+    maxiteration = 300;
+    m = 3;
+    [E5,A5,D5,B5,R5,Loss] = DMBU(Y,'NUM_ENDMS',m,'MAX_ITERATIONS',maxiteration,'INITIALIZATION',style,'PLOT_ERROR','no','SHOW_ERROR', 'yes');
+    Abundance = A5';
+    for i = 1:size(Abundance,2)
+        map = reshape(Abundance(:,i),[size(Y3d,1),size(Y3d,2)]);
+        figure
+        imagesc(map',[0 1]);
+        colormap(gray)
+        axis off
+        title('DMBU Abundance','fontsize',12);
+    end
+    Babundance = B5';
+    for i = 1:size(Babundance,2)
+        map = reshape(Babundance(:,i),[size(Y3d,1),size(Y3d,2)]);
+        figure
+        imagesc(map');
+        colormap(gray)
+%       colorbar 
+%       set(gcf, 'position', [100 100 500 600]);
+        title('DMBU Interaction Abundance','fontsize',12);
+        axis off
+    end
+  R3d = reshape(R5', 50, 50, bands); 
+  R3d = imrotate(R3d, -90); 
+  R3d = fliplr(R3d);
+  figure
+  imagesc(R3d(:,:,1));
+  axis off
+  title('DMBU Interation Outlier','fontsize',12);   
+%%
+er = Y-E5*A5;
+Error_DMBU = sqrt(sum(sum(er.^2))/(bands*n))
+er2 = Y-E2*A2;
+Error_rNMF = sqrt(sum(sum(er2.^2))/(bands*n))
+er3 = Y-E1*A3;
+Error_SemiNMF = sqrt(sum(sum(er3.^2))/(bands*n))
